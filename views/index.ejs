@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Update Articoli</title>
+  <!-- IMPORTA LA BIBLIOTECA BOOTSTRAP-->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"> 
+  
+  <!-- AGGIUNGI STILI CSS -->
+  <style>
+    body {
+      background-color: #f5f7fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .container {
+      margin-top: 3rem;
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .message {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: #e0ffe0;
+      border: 1px solid #b3ffb3;
+      border-radius: 8px;
+      color: #2e7d32;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="text-center mb-4">Anagrafica articoli</h1>
+
+    <% if (mensaje) { %>
+      <div class="message"><strong><%= mensaje %></strong></div>
+    <% } %>
+
+    <!-- Verifica se esiste l'oggetto DatiOutput.articoli e se contiene elementi -->
+    <% if (DatiOutput && DatiOutput.articoli && DatiOutput.articoli.length > 0) { %>
+
+      <!-- Campo per filtrare gli articoli per codice. Ogni volta che l'utente scrive (onkeyup), chiama filterTableByCodice().-->
+      <div class="mb-3">
+        <input type="text" class="form-control" id="searchCodice" placeholder="🔍 Filtra per codice..." onkeyup="filterTableByCodice()">
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-striped" id="articoliTable">
+          <thead class="table-primary">
+            <tr>
+              <th>Codice</th>
+              <th>Descrizione</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Ogni riga viene generata con un ciclo -->
+            <% DatiOutput.articoli.forEach(function(articolo) { %>
+              <tr>
+                <td><%= articolo.codice %></td>
+                <td><%= articolo.descrizione %></td>
+                <td>
+                  <button class="btn btn-info btn-sm" onclick="editRow(this)">✏️</button>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <!-- BOTTONE PER SALVARE LE MODIFICHE SUL SERVER + BOTTONE PER VEDERE +10 ARTICOLI-->
+      <div class="text-center mt-3">
+        <button class="btn btn-success mb-3" onclick="guardarCambiosTabla()">💾 Salva Modifiche</button><br>
+        <button id="loadMoreBtn" class="btn btn-primary" onclick="loadMoreRows()">⬇️ Carica altri</button>
+      </div>
+    <% } else { %>
+      <p>Nessun articolo disponibile.</p>
+    <% } %>
+  </div>
+
+  <script>
+    // Numero di righe visibili inizialmente nella tabella
+    let currentVisible = 10;
+
+    // Trova la riga della tabella del pulsante che è stato cliccato.
+    // Modifica il contenuto delle celle per mostrare i campi editabili (input).
+    // Disattiva la modifica del codice (readonly) e permette di modificare la descrizione.
+    // Modifica i pulsanti: mostra 💾 (salva) e ❌ (annulla).
+    function editRow(button) {
+      const row = button.closest("tr");
+      const codiceCell = row.cells[0];
+      const descCell = row.cells[1];
+      const actionsCell = row.cells[2];
+
+      const currentCodice = codiceCell.textContent.trim();
+      const currentDesc = descCell.textContent.trim();
+
+      codiceCell.innerHTML = `<input type="text" class="form-control" value="${currentCodice}" readonly>`;
+      descCell.innerHTML = `<input type="text" class="form-control" value="${currentDesc}">`;
+
+      actionsCell.innerHTML = `
+        <button class="btn btn-success btn-sm" onclick="saveRow(this)">💾</button>
+        <button class="btn btn-warning btn-sm" onclick="cancelEdit(this, '${currentCodice}', '${currentDesc}')">❌</button>
+      `;
+    }
+
+    // Salva il contenuto modificato (solo la descrizione).
+    // Converte il campo input in testo.
+    // Restaura il pulsante ✏️ per tornare a modificare.
+    function saveRow(button) {
+      const row = button.closest("tr");
+      const newDesc = row.cells[1].querySelector("input").value;
+      row.cells[1].innerHTML = newDesc;
+      row.cells[2].innerHTML = `<button class="btn btn-info btn-sm" onclick="editRow(this)">✏️</button>`;
+    }
+
+    // Annulla la modifica e ripristina i valori originali.
+    function cancelEdit(button, originalCodice, originalDesc) {
+      const row = button.closest("tr");
+      row.cells[0].innerHTML = originalCodice;
+      row.cells[1].innerHTML = originalDesc;
+      row.cells[2].innerHTML = `<button class="btn btn-info btn-sm" onclick="editRow(this)">✏️</button>`;
+    }
+
+    // Scorre tutte le righe della tabella.
+    // Per ogni riga, ottiene il codice e la descrizione attuali.
+    // Se è in modalità di modifica (c'è un <input>), prende il valore degli input.
+    // Se no, prende il testo normale.
+    // Salva tutto in un array articoli.
+    function guardarCambiosTabla() {
+      const rows = document.querySelectorAll("#articoliTable tbody tr");
+      const articoli = [];
+
+      rows.forEach(row => {
+        const codice = row.cells[0].querySelector("input")
+          ? row.cells[0].querySelector("input").value.trim()
+          : row.cells[0].textContent.trim();
+
+        const descrizione = row.cells[1].querySelector("input")
+          ? row.cells[1].querySelector("input").value.trim()
+          : row.cells[1].textContent.trim();
+
+        articoli.push({ codice, descrizione });
+      });
+
+      fetch('/actualizar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ articoli })
+      })
+      .then(response => response.text())
+      .then(() => location.reload())
+      .catch(error => alert('Errore nel salvare i cambiamenti: ' + error));
+    }
+    
+    // Filtra le righe in base a ciò che l'utente scrive nel campo di ricerca per codice.
+    function filterTableByCodice() {
+      const searchTerm = document.getElementById("searchCodice").value.toLowerCase();
+      const rows = document.querySelectorAll("#articoliTable tbody tr");
+      rows.forEach(row => {
+        const codice = row.cells[0].innerText.toLowerCase();
+        const shouldShow = codice.includes(searchTerm);
+        row.style.display = shouldShow ? "" : "none";
+      });
+    }
+
+    // Mostra più righe nella tabella di 10 in 10.
+    function loadMoreRows() {
+      const rows = document.querySelectorAll("#articoliTable tbody tr");
+      for (let i = 0; i < rows.length; i++) {
+        if (i < currentVisible) {
+          rows[i].style.display = "";
+        } else {
+          rows[i].style.display = "none";
+        }
+      }
+
+      currentVisible += 10;
+      // Se si raggiungono tutte le righe, nasconde il pulsante "Carica altri".
+      if (currentVisible >= rows.length) {
+        document.getElementById("loadMoreBtn").style.display = "none";
+      }
+    }
+
+    // Quando la pagina viene caricata, esegue loadMoreRows() per mostrare solo le prime 10 righe.
+    document.addEventListener("DOMContentLoaded", () => {
+      loadMoreRows();
+    });
+  </script>
+</body>
+</html>

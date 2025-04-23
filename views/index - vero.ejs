@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Update articoli</title>
+    <style>
+        .articolo {
+            margin-bottom: 10px;
+        }
+        input {
+            margin-right: 10px;
+        }
+        button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Update articoli</h1>
+
+    <form action="/actualizar" method="POST" id="form-articoli">
+        <div id="articoli-container">
+            <div class="articolo">
+                <input type="text" name="articoli[0][codice]" placeholder="Código" value="001" required>
+                <input type="text" name="articoli[0][descrizione]" placeholder="Descripción" value="Prova lavorazione xxxxxx" required>
+            </div>
+            <div class="articolo">
+                <input type="text" name="articoli[1][codice]" placeholder="Código" value="qqwq" required>
+                <input type="text" name="articoli[1][descrizione]" placeholder="Descripción" value="Errore" required>
+            </div>
+        </div>
+
+        <button type="button" onclick="agregarArticulo()">➕ Aggiungi articoli</button>
+        <br>
+        <button type="submit">Update articoli</button>
+    </form>
+
+    <% if (mensaje) { %>
+        <p><strong><%= mensaje %></strong></p>
+    <% } %>
+
+    <% if (DatiOutput) { %>
+        <h2>Response del server:</h2>
+        <pre><%= JSON.stringify(DatiOutput, null, 2) %></pre>
+    <% } %>
+
+    <script>
+        let index = 2; // empieza desde 2 porque ya hay 2 artículos
+
+        function agregarArticulo() {
+            const container = document.getElementById('articoli-container');
+
+            const div = document.createElement('div');
+            div.className = 'articolo';
+            div.innerHTML = `
+                <input type="text" name="articoli[${index}][codice]" placeholder="Código" required>
+                <input type="text" name="articoli[${index}][descrizione]" placeholder="Descripción" required>
+            `;
+            container.appendChild(div);
+            index++;
+        }
+    </script>
+</body>
+</html>
